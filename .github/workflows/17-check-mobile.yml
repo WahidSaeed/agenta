@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'web/mobile/**'
+      - 'web/packages/**'
       - 'web/entrypoint.sh'
       - 'web/docker/**'
       - 'web/package.json'
