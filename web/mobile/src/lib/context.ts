@@ -1,6 +1,8 @@
 import {getProjectsClient} from "@agenta/sdk/resources"
 import {z} from "zod"
 
+import {tryRefreshSession} from "./auth"
+
 /** Mobile's own last-visited workspace/project, for `/m/` root resolution. */
 export const LAST_CONTEXT_KEY = "agenta:mobile:last-context"
 
@@ -69,7 +71,7 @@ export type ProjectsResult =
     | {kind: "unauthenticated"}
     | {kind: "error"}
 
-export async function fetchProjects(): Promise<ProjectsResult> {
+async function fetchProjectsOnce(): Promise<ProjectsResult> {
     try {
         const data = await getProjectsClient().getProjects()
         const parsed = z.array(projectRowSchema).safeParse(data)
@@ -83,4 +85,13 @@ export async function fetchProjects(): Promise<ProjectsResult> {
         if (status === 401 || status === 403) return {kind: "unauthenticated"}
         return {kind: "error"}
     }
+}
+
+export async function fetchProjects(): Promise<ProjectsResult> {
+    const first = await fetchProjectsOnce()
+    if (first.kind !== "unauthenticated") return first
+    // An expired access token is not signed-out: try one cookie refresh, then
+    // retry once before letting the unauthenticated verdict stand.
+    if (!(await tryRefreshSession())) return first
+    return fetchProjectsOnce()
 }
