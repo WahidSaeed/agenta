@@ -89,5 +89,12 @@
   "sandboxPermission": {
     "network": {"mode": "off", "allowlist": []},
     "enforcement": "strict"
+  },
+  "effectiveParameters": {
+    "agent": {
+      "instructions": "You are a helpful assistant.",
+      "llm": {"model": "openai-codex/gpt-5.5", "provider": "openai"},
+      "runner": {"permissions": {"default": "allow_reads"}}
+    }
   }
 }
