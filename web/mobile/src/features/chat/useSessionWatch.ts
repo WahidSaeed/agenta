@@ -2,12 +2,12 @@ import {useEffect, useRef, useState} from "react"
 
 import {useQueryClient} from "@tanstack/react-query"
 
+import {tryRefreshSession} from "@/lib/auth"
+
 import {actionableInteractionsQueryKey} from "../sessions/useActionableInteractions"
 import {livenessQueryKey} from "../sessions/useLivenessPoll"
 
 import {sessionWatchUrl, watchRetryDelayMs} from "./watchRelay"
-
-import {tryRefreshSession} from "@/lib/auth"
 
 /** Minimum spacing between two reconnect revalidations, so a reconnect loop can't fan out
  * into one full records refetch per attempt. */
