@@ -1,5 +1,9 @@
 import {useEffect, useMemo, useState} from "react"
 
+import {ScreenScaffold} from "@/components/ScreenScaffold"
+
+import {ProjectSwitcher} from "../context/ProjectSwitcher"
+
 import {SessionRow} from "./SessionRow"
 import {SessionSearchBar} from "./SessionSearchBar"
 import {SessionListEmpty, SessionListError, SessionListLoading} from "./states/SessionListStates"
@@ -74,22 +78,22 @@ export const SessionListScreen = ({
     }
 
     return (
-        <div className="bg-background text-foreground flex h-dvh flex-col">
-            <div className="border-border flex shrink-0 flex-col gap-2 border-b p-4">
-                <SessionSearchBar value={input} onChange={setInput} />
-                {pendingTotal > 0 ? (
-                    <p className="text-primary text-xs">
-                        {pendingTotal} approval{pendingTotal === 1 ? "" : "s"} pending
-                    </p>
-                ) : null}
-            </div>
-            <div
-                ref={scroll.ref}
-                onScroll={scroll.onScroll}
-                className="flex flex-1 flex-col overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]"
-            >
-                {body}
-            </div>
-        </div>
+        <ScreenScaffold
+            scrollRef={scroll.ref}
+            onScroll={scroll.onScroll}
+            header={
+                <div className="border-border flex shrink-0 flex-col gap-2 border-b p-4">
+                    <ProjectSwitcher workspaceId={workspaceId} projectId={projectId} />
+                    <SessionSearchBar value={input} onChange={setInput} />
+                    {pendingTotal > 0 ? (
+                        <p className="text-primary text-xs">
+                            {pendingTotal} approval{pendingTotal === 1 ? "" : "s"} pending
+                        </p>
+                    ) : null}
+                </div>
+            }
+        >
+            {body}
+        </ScreenScaffold>
     )
 }
