@@ -6,9 +6,15 @@ import {StatusTag} from "@/components/StatusTag"
 import {ProjectSwitcher} from "../context/ProjectSwitcher"
 
 import {mergeSessionRows} from "./mergeSessionRows"
+import {filterPendingRows} from "./pendingFilter"
 import {SessionRow} from "./SessionRow"
 import {SessionSearchBar} from "./SessionSearchBar"
-import {SessionListEmpty, SessionListError, SessionListLoading} from "./states/SessionListStates"
+import {
+    SessionListEmpty,
+    SessionListError,
+    SessionListLoading,
+    SessionListPendingEmpty,
+} from "./states/SessionListStates"
 import {pendingCountBySession, useActionableInteractions} from "./useActionableInteractions"
 import {livenessBySession, useLivenessPoll} from "./useLivenessPoll"
 import {useSessionListHead} from "./useSessionListHead"
@@ -23,6 +29,7 @@ export const SessionListScreen = ({
     workspaceId: string
     projectId: string
 }) => {
+    const [onlyPending, setOnlyPending] = useState(false)
     const [input, setInput] = useState("")
     const [search, setSearch] = useState("")
     useEffect(() => {
@@ -42,11 +49,12 @@ export const SessionListScreen = ({
         () => pendingCountBySession(interactions.data),
         [interactions.data],
     )
-    const pendingTotal = interactions.data?.length ?? 0
+    // Sessions, not interactions: the filter shows rows, and one session can hold several gates.
+    const waitingSessions = pendingBySession?.size ?? 0
     const pages = query.data?.pages ?? []
     // querySessions resolves null on failure — treat a null page like a query error.
     const failed = query.isError || pages.some((page) => page === null)
-    const rows = useMemo(
+    const merged = useMemo(
         () =>
             mergeSessionRows(
                 head.data ?? [],
@@ -54,6 +62,16 @@ export const SessionListScreen = ({
             ),
         [head.data, query.data],
     )
+    const pending = useMemo(
+        () => filterPendingRows(merged, pendingBySession),
+        [merged, pendingBySession],
+    )
+    const rows = onlyPending ? pending.rows : merged
+
+    // Answering the last gate must not strand the user on an empty filtered list.
+    useEffect(() => {
+        if (onlyPending && waitingSessions === 0) setOnlyPending(false)
+    }, [onlyPending, waitingSessions])
 
     let body
     if (query.isPending) {
@@ -61,10 +79,27 @@ export const SessionListScreen = ({
     } else if (failed) {
         body = <SessionListError onRetry={() => void query.refetch()} />
     } else if (rows.length === 0) {
-        body = <SessionListEmpty />
+        // Filtered-empty is not the same as project-empty: the waiting sessions are real, just
+        // deeper than the pages fetched so far.
+        body = onlyPending ? (
+            <SessionListPendingEmpty
+                unloaded={pending.unloaded}
+                canLoadMore={Boolean(query.hasNextPage)}
+                loading={query.isFetchingNextPage}
+                onLoadMore={() => void query.fetchNextPage()}
+            />
+        ) : (
+            <SessionListEmpty />
+        )
     } else {
         body = (
             <div className="flex flex-col">
+                {onlyPending && pending.unloaded > 0 ? (
+                    <p className="text-muted-foreground border-border border-b px-4 py-2 text-xs">
+                        {pending.unloaded} more waiting further down the list — load more to reach{" "}
+                        {pending.unloaded === 1 ? "it" : "them"}.
+                    </p>
+                ) : null}
                 {rows.map((session) => (
                     <SessionRow
                         key={session.id}
@@ -98,11 +133,18 @@ export const SessionListScreen = ({
                 <div className="border-border flex shrink-0 flex-col gap-2 border-b p-4">
                     <ProjectSwitcher workspaceId={workspaceId} projectId={projectId} />
                     <SessionSearchBar value={input} onChange={setInput} />
-                    {pendingTotal > 0 ? (
-                        <p className="flex items-center gap-2">
-                            <StatusTag tone="attention">{pendingTotal} pending</StatusTag>
-                            <span className="text-muted-foreground text-xs">waiting on you</span>
-                        </p>
+                    {waitingSessions > 0 ? (
+                        <button
+                            type="button"
+                            aria-pressed={onlyPending}
+                            onClick={() => setOnlyPending((on) => !on)}
+                            className="-m-1 flex min-h-11 items-center gap-2 p-1 text-left"
+                        >
+                            <StatusTag tone="attention">{waitingSessions} waiting</StatusTag>
+                            <span className="text-muted-foreground text-xs underline underline-offset-4">
+                                {onlyPending ? "show all sessions" : "show only these"}
+                            </span>
+                        </button>
                     ) : null}
                 </div>
             }
