@@ -4,11 +4,13 @@ import {ScreenScaffold} from "@/components/ScreenScaffold"
 
 import {ProjectSwitcher} from "../context/ProjectSwitcher"
 
+import {mergeSessionRows} from "./mergeSessionRows"
 import {SessionRow} from "./SessionRow"
 import {SessionSearchBar} from "./SessionSearchBar"
 import {SessionListEmpty, SessionListError, SessionListLoading} from "./states/SessionListStates"
 import {pendingCountBySession, useActionableInteractions} from "./useActionableInteractions"
 import {livenessBySession, useLivenessPoll} from "./useLivenessPoll"
+import {useSessionListHead} from "./useSessionListHead"
 import {useSessionListScrollRestore} from "./useSessionListScrollRestore"
 import {useSessionsInfinite} from "./useSessionsInfinite"
 
@@ -28,6 +30,9 @@ export const SessionListScreen = ({
     }, [input])
 
     const query = useSessionsInfinite(projectId, search)
+    // Bounded liveness for the list itself: newest page only, so a session created elsewhere
+    // shows up without a manual refresh (see useSessionListHead).
+    const head = useSessionListHead(projectId, search)
     const scroll = useSessionListScrollRestore(projectId, !query.isPending)
     const liveness = useLivenessPoll(projectId)
     const liveBadges = useMemo(() => livenessBySession(liveness.data), [liveness.data])
@@ -40,7 +45,14 @@ export const SessionListScreen = ({
     const pages = query.data?.pages ?? []
     // querySessions resolves null on failure — treat a null page like a query error.
     const failed = query.isError || pages.some((page) => page === null)
-    const rows = pages.flatMap((page) => page ?? []).filter((session) => !session.archived_at)
+    const rows = useMemo(
+        () =>
+            mergeSessionRows(
+                head.data ?? [],
+                (query.data?.pages ?? []).flatMap((page) => page ?? []),
+            ),
+        [head.data, query.data],
+    )
 
     let body
     if (query.isPending) {
