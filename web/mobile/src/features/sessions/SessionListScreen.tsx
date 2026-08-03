@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from "react"
 
 import {ScreenScaffold} from "@/components/ScreenScaffold"
+import {StatusTag} from "@/components/StatusTag"
 
 import {ProjectSwitcher} from "../context/ProjectSwitcher"
 
@@ -98,8 +99,9 @@ export const SessionListScreen = ({
                     <ProjectSwitcher workspaceId={workspaceId} projectId={projectId} />
                     <SessionSearchBar value={input} onChange={setInput} />
                     {pendingTotal > 0 ? (
-                        <p className="text-primary text-xs">
-                            {pendingTotal} approval{pendingTotal === 1 ? "" : "s"} pending
+                        <p className="flex items-center gap-2">
+                            <StatusTag tone="attention">{pendingTotal} pending</StatusTag>
+                            <span className="text-muted-foreground text-xs">waiting on you</span>
                         </p>
                     ) : null}
                 </div>
